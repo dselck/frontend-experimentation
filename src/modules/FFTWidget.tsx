@@ -82,7 +82,7 @@ const FFTWidget = React.forwardRef(
             onMtag={addBox}
           >
             <BoxesPlugin
-              boxes={boxes}
+              addOnCtrlClick
               onId={addedToPlotEvent}
               onMove={moveBoxEvent}
               options={{

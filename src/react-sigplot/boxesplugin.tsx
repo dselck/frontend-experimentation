@@ -61,6 +61,7 @@ interface pluginProps {
   options?: pluginOptions;
   plot?: Plot;
   boxes?: box[];
+  addOnCtrlClick?: boolean;
   onMove?: CallableFunction;
   onAdd?: CallableFunction;
   onRemove?: CallableFunction;
@@ -72,6 +73,7 @@ function BoxesPlugin({
   plot,
   options,
   boxes,
+  addOnCtrlClick,
   onMove,
   onAdd,
   onRemove,
@@ -112,6 +114,12 @@ function BoxesPlugin({
       plot.addListener("boxremove", function (event) {
         const curBox: box = event.box;
         onRemove(curBox);
+      });
+    }
+
+    if (addOnCtrlClick) {
+      plot.addListener("mtag", function (event) {
+        bPlugin.addBox({x: event.x, y: event.y, h: event.h, w: event.w})
       });
     }
 
