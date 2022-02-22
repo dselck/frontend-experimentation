@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
 import { Plot } from "sigplot";
 import Plugins from "../../node_modules/sigplot/js/plugins.js";
-import produce from "immer";
+import { box } from "./typing";
 
 /**
  * Boxes Plugin wrapper for sigplot
@@ -10,38 +9,9 @@ import produce from "immer";
  * This layer adds a plugin to sigplot
  *
  *   <SigPlot>
- *     <BoxesPlugin boxes={boxes} />
+ *     <BoxesPlugin addOnMtag />
  *   </SigPlot>
  */
-
-const propTypes = {
-  /** Options for the plugin */
-  options: PropTypes.object, // eslint-disable-line react/no-unused-prop-types
-
-  plot: PropTypes.object,
-
-  boxes: PropTypes.arrayOf(Object),
-
-  onMove: PropTypes.func,
-  onAdd: PropTypes.func,
-  onRemove: PropTypes.func,
-  onSelect: PropTypes.func,
-  onId: PropTypes.func,
-};
-
-export interface box {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  text?: string;
-  fill?: boolean;
-  fillStyle?: string;
-  alpha?: number;
-  lineWidth?: number;
-  absolutePlacement?: boolean;
-  id?: string; // this is inserted by the plugin
-}
 
 interface pluginOptions {
   display?: boolean;
@@ -58,27 +28,59 @@ interface pluginOptions {
 }
 
 interface pluginProps {
+  /** Options to be passed to the plugin regarding global defaults */
   options?: pluginOptions;
+  /** The reference to the Plot to which this plugin is attached.
+   * If this is a child component of SigPlot, then this gets added
+   * automatically for you and you should leave it blank. */
   plot?: Plot;
-  boxes?: box[];
-  addOnCtrlClick?: boolean;
-  onMove?: CallableFunction;
-  onAdd?: CallableFunction;
-  onRemove?: CallableFunction;
-  onSelect?: CallableFunction;
-  onId?: CallableFunction;
+  /** Any boxes passed to this property will be inserted onto the
+   * plot. If this input changes, all those items will be added to the
+   * plot without regard for if they were already there. In essence
+   * This just mimicks the boxAdd function in the plugin. I do allow
+   * passing a list of boxes in addition to one by one.
+   */
+  addBox?: box[] | box;
+  /** Any box IDs passed to this function will be removed from the plot.
+   * It will "watch" changes much like addBox so you can interact with it.
+   * You can either pass a single box id or a list of box ids
+   */
+  removeBox?: string[] | string;
+  /** If you would like to programatically take a box that is already
+   * on the screen and move it, then put the box info here. If the box.id
+   * contained in the box does not exist, then nothing will happen.
+   */
+  moveBox?: box;
+  /** If this is set to True then a handler will be setup to add boxes
+   * to the plot on "mtag" events - i.e. if you hold control while drawing
+   * a box with your mouse.
+   */
+  addOnMtag?: boolean;
+  /** If you move (or resize) a box on the plot, this callback will be
+   * triggered. The passed box will be the "new" box position.
+   */
+  onMove?(box: box): void;
+  /** Subscribing to this callback will allow you to retrieve the IDs of
+   * any boxes added to the plot.
+   */
+  onAdd?(box: box): void;
+  /** This callback will be triggered anytime a box is removed from the plot */
+  onRemove?(box: box): void;
+  /** This callback will be triggered anytime a box on the plot is selected */
+  onSelect?(box: box): void;
 }
 
 function BoxesPlugin({
   plot,
   options,
-  boxes,
-  addOnCtrlClick,
+  addBox,
+  removeBox,
+  moveBox,
+  addOnMtag,
   onMove,
   onAdd,
   onRemove,
   onSelect,
-  onId,
 }: pluginProps) {
   const [plugin, setPlugin] = useState(undefined);
 
@@ -88,118 +90,111 @@ function BoxesPlugin({
     plot.add_plugin(bPlugin, 2);
     setPlugin(bPlugin);
 
-    // Add callbacks if they exist
+    /** Add callbacks if the user wants them. Make sure that the
+     * despread operator is used everywhere as the objects being
+     * returned in event.box are just references to the object on
+     * the plot. That can cause weird behavior... Therefore, we
+     * will just return copies of those original objects.
+     */
     if (onMove) {
       plot.addListener("boxmove", function (event) {
-        const curBox: box = event.box;
+        const curBox: box = { ...event.box };
         onMove(curBox);
       });
     }
 
     if (onAdd) {
       plot.addListener("boxadd", function (event) {
-        const curBox: box = event.box;
+        const curBox: box = { ...event.box };
         onAdd(curBox);
       });
     }
 
     if (onSelect) {
       plot.addListener("boxselect", function (event) {
-        const curBox: box = event.box;
+        const curBox: box = { ...event.box };
         onSelect(curBox);
       });
     }
 
     if (onRemove) {
       plot.addListener("boxremove", function (event) {
-        const curBox: box = event.box;
+        const curBox: box = { ...event.box };
         onRemove(curBox);
       });
     }
 
-    if (addOnCtrlClick) {
+    if (addOnMtag) {
       plot.addListener("mtag", function (event) {
-        bPlugin.addBox({x: event.x, y: event.y, h: event.h, w: event.w})
+        bPlugin.addBox({ x: event.x, y: event.y, h: event.h, w: event.w });
       });
     }
 
+    /** There is a bug in the boxes plugin where if certain modes are selected
+     * then boxes with no width or height can be created. This is a hacky
+     * bugfix to tide over until the actual bug is fixed
+     *
+     * TODO Remove when original bug is fixed
+     */
+    plot.addListener("boxadd", function (event) {
+      if (!event.box.w || !event.box.h) {
+        // There appears to be a bug in the boxes plugin where you can
+        // create boxes just by clicking on the screen of 0 w an 0 h
+        bPlugin.removeBox(event.box.id);
+      }
+    });
+
     // Called on unmount
     return () => {
-      console.log("removing plugin");
-      plot.remove_plugin(plugin);
+      plot.remove_plugin(bPlugin);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    // We need to ensure that everything about the plot
-    // matches here (order etc). Make some arrays to
-    // do some checking against
     if (plugin) {
-      const curPlotBoxes: box[] = plugin.getBoxes();
-      console.log(curPlotBoxes);
-      let pushIds = false;
-
-      if (boxes && boxes.length > 0) {
-        // The first thing we need to do is check the supplied
-        // boxes to see if they are already plotted
-        boxes.forEach((box) => {
-          // First look for the correct box by id
-          if (box.id) {
-            const idx = curPlotBoxes.findIndex((curBox) => {
-              return curBox.id === box.id;
-            });
-
-            if (idx > -1 && curPlotBoxes[idx] !== box) {
-              // The box has been altered in some way outside of the
-              // plot. Push this change to the plot and redraw
-              plugin.boxes[idx] = box;
-              plot.redraw();
-            } else if (idx === -1) {
-              // We have a local copy of this, including its ID.
-              // Let's just assume that the user put the id in
-              // there and didn't let the software do it. Fix here
-              box.id = plugin.addBox(box);
-              pushIds = true;
-            }
-          } else {
-            // If there is no ID then the box needs to be added
-            box.id = plugin.addBox(box);
-            pushIds = true;
-          }
-        });
-
-        // Now we need to see if there are things that need to be deleted
-        curPlotBoxes.forEach((curBox) => {
-          const idx = boxes.findIndex((box) => {
-            return box.id === curBox.id;
-          });
-
-          // It is on the plot, but not in our local store - delete.
-          if (idx === -1) {
-            plugin.removeBox(curBox.id);
-          }
-        });
-
-        // There is absolutely no guarantee that the order will be
-        // correct betwen "our" copy of the boxes, and the one
-        // actually plotted on the screen. TODO fix this...
-        console.log(boxes);
-        console.log(plugin.getBoxes());
-        if (onId && pushIds) {
-          onId(boxes);
-        }
-      } else if (curPlotBoxes.length > 0) {
-        plugin.clearBoxes();
+      if (addBox instanceof Array) {
+        addBox.forEach((box) => plugin.addBox(box));
+      } else if (addBox) {
+        plugin.addBox(addBox);
       }
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plugin, boxes]);
+  }, [plugin, addBox]);
+
+  useEffect(() => {
+    if (plugin) {
+      if (removeBox instanceof Array) {
+        removeBox.forEach((box) => plugin.removeBox(box));
+      } else if (removeBox) {
+        plugin.removeBox(removeBox);
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plugin, removeBox]);
+
+  useEffect(() => {
+    if (plugin) {
+      // Manually insert the box into the array held by the plugin
+      let curBoxes: box[] = plugin.getBoxes();
+      const idx = curBoxes.findIndex((box) => box.id === moveBox.id);
+      if (idx !== -1) curBoxes[idx] = { ...moveBox };
+
+      // Redraw the plot
+      plot.redraw();
+
+      // Send out a resize event if we need to
+      if (onMove) {
+        onMove(moveBox);
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plugin, moveBox]);
 
   return <div />;
 }
-
-BoxesPlugin.propTypes = propTypes;
 
 export default BoxesPlugin;

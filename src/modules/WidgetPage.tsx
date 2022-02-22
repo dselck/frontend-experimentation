@@ -2,6 +2,7 @@ import React from "react";
 import { Card } from "react-bootstrap";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import FFTWidget from "./FFTWidget";
+import FFTMantine from "./fftmantine";
 
 function WidgetPage() {
   const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -45,7 +46,7 @@ function WidgetPage() {
           <p>I have a body</p>
         </Card.Body>
       </Card>
-      <FFTWidget key="c" />
+      <FFTMantine key="c" />
     </ResponsiveGridLayout>
   );
 }

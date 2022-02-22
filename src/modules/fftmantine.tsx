@@ -1,13 +1,19 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Card, Dropdown, DropdownButton } from "react-bootstrap";
+import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 import SigPlot from "../react-sigplot/sigplot";
 import HrefLayer from "../react-sigplot/hreflayer";
 import BoxesPlugin from "../react-sigplot/boxesplugin";
 import { box } from "../react-sigplot/typing";
-
+import {
+  Card,
+  Text,
+  Button,
+  Header,
+  useMantineTheme,
+  Paper,
+} from "@mantine/core";
 import produce from "immer";
 
-const FFTWidget = React.forwardRef(
+const FFTMantine = React.forwardRef(
   (props: any, ref: React.RefObject<HTMLDivElement>) => {
     const plotRef = useRef<HTMLDivElement>();
     const [plotSize, setPlotSize] = useState({ height: 300, width: 300 });
@@ -16,15 +22,27 @@ const FFTWidget = React.forwardRef(
     const [boxesToRemove, setboxesToRemove] = useState<string[] | string>();
     const [boxToMove, setBoxToMove] = useState<box>();
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useLayoutEffect(() => {
-      const newWidth = plotRef.current.clientWidth;
-      const newHeight = plotRef.current.clientHeight;
+    const headerHeight = 40;
+    const theme = useMantineTheme();
+    const secondaryColor =
+      theme.colorScheme === "dark"
+        ? theme.colors.dark[1]
+        : theme.colors.gray[7];
 
-      if (newWidth !== plotSize.width || newHeight !== plotSize.height) {
-        setPlotSize({ height: newHeight, width: newWidth });
+    useLayoutEffect(() => {
+      const cardWidth = ref.current.clientWidth;
+      const cardHeight = ref.current.clientHeight;
+      const plotWidth = plotRef.current.clientWidth;
+      const plotHeight = plotRef.current.clientHeight;
+
+      const newPlotHeight =
+        cardHeight - headerHeight > 10 ? cardHeight - headerHeight : 10;
+
+      if (cardWidth !== plotWidth || plotHeight !== newPlotHeight) {
+        setPlotSize({ height: newPlotHeight, width: cardWidth });
       }
-    });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [props]);
 
     const addBoxEvent = (box: box) => {
       setBoxes(
@@ -49,9 +67,17 @@ const FFTWidget = React.forwardRef(
     };
 
     return (
-      <Card ref={ref} className={props.className} style={props.style}>
-        <Card.Header>Its a Penny!!!</Card.Header>
-        <Card.Body ref={plotRef} style={{ overflow: "hidden", padding: "0px" }}>
+      <Paper
+        ref={ref}
+        className={props.className}
+        style={{ overflow: "hidden", ...props.style }}
+        shadow="md"
+        withBorder
+      >
+        <Header height={headerHeight} padding="sm">
+          <Text>This is the header</Text>
+        </Header>
+        <div ref={plotRef} style={{ overflow: "hidden" }}>
           <SigPlot width={plotSize.width} height={plotSize.height}>
             <BoxesPlugin
               addOnMtag
@@ -68,19 +94,10 @@ const FFTWidget = React.forwardRef(
             />
             <HrefLayer href="http://sigplot.lgsinnovations.com/dat/penny.prm"></HrefLayer>
           </SigPlot>
-        </Card.Body>
-        <Card.Footer>
-          <DropdownButton variant="secondary" title="FFT Size">
-            <Dropdown.Item>4k</Dropdown.Item>
-            <Dropdown.Item>8k</Dropdown.Item>
-            <Dropdown.Item>16k</Dropdown.Item>
-            <Dropdown.Item>32k</Dropdown.Item>
-            <Dropdown.Item>64k</Dropdown.Item>
-          </DropdownButton>
-        </Card.Footer>
-      </Card>
+        </div>
+      </Paper>
     );
   }
 );
 
-export default FFTWidget;
+export default FFTMantine;

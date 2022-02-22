@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Plot } from "sigplot";
+import { layerOptions } from "./typing";
 
 /**
  * Wrapper around sigplot.Plot.overlay_href
@@ -39,23 +40,24 @@ const defaultProps = {
 };
 
 interface HrefProps {
+  /** href or |-delimited hrefs the url to the bluefile or matfile */
   href?: string;
   onload?: CallableFunction;
-  options?: object;
+  layerOptions?: layerOptions;
   plot?: Plot;
 }
 
-function HrefLayer({ plot, href, onload, options }: HrefProps) {
+function HrefLayer({ plot, href, onload, layerOptions }: HrefProps) {
   const [layer, setLayer] = useState(undefined);
-  const [pastHref, setHref] = useState(href);
 
   useEffect(() => {
     // Called on Mount
-    setLayer(plot.overlay_href(href, onload, options));
+    const curLayer = plot.overlay_href(href, onload, layerOptions);
+    setLayer(curLayer);
 
     // This will be called on unmount
     return () => {
-      plot.remove_layer(layer);
+      plot.remove_layer(curLayer);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,20 +65,19 @@ function HrefLayer({ plot, href, onload, options }: HrefProps) {
 
   useEffect(() => {
     if (layer) {
-      if (href !== pastHref) {
-        setHref(href);
-        plot.deoverlay(layer);
-        setLayer(plot.overlay_href(href, onload, options));
-      } else {
-        const cur_layer = plot.get_layer(layer);
-        if (cur_layer) {
-          cur_layer.change_settings(options);
-        }
-      }
+      plot.deoverlay(layer);
+      setLayer(plot.overlay_href(href, onload, layerOptions));
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [href, options]);
+  }, [href]);
+
+  useEffect(() => {
+    if (layer) {
+      plot.get_layer(layer).change_settings(layerOptions);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layerOptions]);
 
   return <div />;
 }

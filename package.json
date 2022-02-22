@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@mantine/core": "^3.6.9",
+    "@mantine/dropzone": "^3.6.9",
+    "@mantine/hooks": "^3.6.9",
+    "@mantine/modals": "^3.6.9",
+    "@mantine/notifications": "^3.6.9",
+    "@mantine/prism": "^3.6.9",
     "@testing-library/jest-dom": "^5.16.2",
     "@testing-library/react": "^12.1.2",
     "@testing-library/user-event": "^13.5.0",

@@ -1,15 +1,27 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import PropTypes from "prop-types";
 import { Plot } from "sigplot";
+import { sigplotOptions } from "./typing";
 
 interface sigplotProps {
+  /** Height of the wrapper div */
   height?: number;
+  /** Width of the wrapper div */
   width?: number;
-  display?: string;
-  styles?: React.CSSProperties;
-  options?: object;
+  /** Callback for `mtag` events which are generated with
+   * clicking and dragging to create a box while holding ctrl.
+   * Returns just the information about the box.
+   */
+  onMtag?(event: mtagEvent): void;
+  /** Styles object for any other CSS styles on the wrapper div */
+  style?: React.CSSProperties;
+  /**
+   * SigPlot plot-level options
+   *
+   * @see See [sigplot.Plot Docs](http://sigplot.lgsinnovations.com/html/doc/sigplot.Plot.html)
+   */
+  options?: sigplotOptions;
+  /** Any plugins or layers that should be added to the plot */
   children?: any;
-  onMtag?: CallableFunction;
 }
 
 export interface mtagEvent {
@@ -23,33 +35,10 @@ export interface mtagEvent {
   hpxl: number;
 }
 
-const propTypes = {
-  /** Height of the wrapper div */
-  height: PropTypes.number,
-
-  /** Width of the wrapper div */
-  width: PropTypes.number,
-
-  /** CSS 'display' property */
-  display: PropTypes.string,
-
-  /** Styles object for any other CSS styles on the wrapper div */
-  styles: PropTypes.object,
-
-  /**
-   * SigPlot plot-level options
-   *
-   * @see See [sigplot.Plot Docs](http://sigplot.lgsinnovations.com/html/doc/sigplot.Plot.html)
-   */
-  options: PropTypes.object,
-
-  onMtag: PropTypes.func,
-};
-
 const defaultProps = {
   height: 300,
   width: 300,
-  display: "inline-block",
+  style: { display: "inline-block" },
   options: {
     all: true,
     expand: true,
@@ -62,8 +51,7 @@ function SigPlot({
   children,
   height,
   width,
-  display,
-  styles,
+  style,
   options,
   onMtag,
 }: sigplotProps) {
@@ -74,7 +62,7 @@ function SigPlot({
   useEffect(() => {
     const plot = new Plot(plotRef.current, options);
     if (onMtag) {
-      plot.addListener("mtag", function (event) {
+      plot.addListener("mtag", (event: any) => {
         const eventData: mtagEvent = {
           x: event.x,
           y: event.y,
@@ -112,8 +100,7 @@ function SigPlot({
       style={{
         height,
         width,
-        display,
-        ...styles,
+        ...style,
       }}
       ref={plotRef}
     >
@@ -122,7 +109,6 @@ function SigPlot({
   );
 }
 
-SigPlot.propTypes = propTypes;
 SigPlot.defaultProps = defaultProps;
 
 export default SigPlot;
